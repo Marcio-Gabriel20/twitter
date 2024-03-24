@@ -9,6 +9,8 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 
 @Entity
@@ -20,6 +22,8 @@ public class Tweet {
     @Column(name = "TWEET_ID")
     private Long tweetId;
 
+    @ManyToOne
+    @JoinColumn(name = "USER_ID")
     private User user;
     private String content;
 
