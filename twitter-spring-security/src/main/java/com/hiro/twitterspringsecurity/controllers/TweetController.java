@@ -5,6 +5,8 @@ import java.util.List;
 import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
@@ -13,10 +15,13 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
 import com.hiro.twitterspringsecurity.dtos.CreateTweetDto;
+import com.hiro.twitterspringsecurity.dtos.FeedDto;
+import com.hiro.twitterspringsecurity.dtos.FeedItemDto;
 import com.hiro.twitterspringsecurity.entities.Role;
 import com.hiro.twitterspringsecurity.entities.Tweet;
 import com.hiro.twitterspringsecurity.repositories.TweetRepository;
@@ -46,27 +51,21 @@ public class TweetController {
         return ResponseEntity.ok().build();
     }
 
-    @SuppressWarnings("null")
-    @GetMapping("/tweets")
-    public ResponseEntity<List<Tweet>> listTweets(JwtAuthenticationToken token) {
+    @GetMapping("/feed")
+    public ResponseEntity<FeedDto> feed(@RequestParam(value = "page", defaultValue = "0") int page, 
+            @RequestParam(value = "pageSize", defaultValue = "10") int pageSize) {
 
-        var user = userRepository.findById(UUID.fromString(token.getName()));
+        var tweets = tweetRepository.findAll(
+                PageRequest.of(page, pageSize, Sort.Direction.DESC, "creationTimestamp"))
+                .map(tweet -> 
+                    new FeedItemDto(
+                            tweet.getTweetId(),
+                            tweet.getContent(),
+                            tweet.getUser().getUsername())
+                );
 
-        List<Tweet> tweets = new ArrayList<>();
-
-        List<Tweet> tweetsDb = tweetRepository.findTweetByUser_id(UUID.fromString(token.getName()));
-
-        var isAdmin = user.get().getRoles()
-                .stream().anyMatch(role -> role.getName().equalsIgnoreCase(Role.Values.ADMIN.name()));
-
-        for (Tweet tweet : tweetsDb) {
-            if(isAdmin || tweet.getUser().getUserId().equals(UUID.fromString(token.getName()))) {
-                tweets.add(tweet);
-                System.out.println(tweet);
-            }
-        }
-
-        return ResponseEntity.ok().body(tweets);
+        return ResponseEntity.ok(
+                new FeedDto(tweets.getContent(), page, pageSize, tweets.getTotalPages(), tweets.getTotalElements()));
     }
 
     @SuppressWarnings("null")
